@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Goyda X: Unstoppable</title>
+    <title>Goyda X - Unstoppable</title>
     <style>
         :root { --bg: #0e1621; --side: #17212b; --accent: #2b5278; --msg: #182533; --text: #ffffff; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; height: 100vh; overflow: hidden; }
@@ -10,8 +10,8 @@
         .sidebar-header { padding: 20px; font-weight: bold; font-size: 22px; color: #64b5f6; border-bottom: 1px solid #080a0d; text-shadow: 0 0 10px #2b5278; }
         .chat-main { flex: 1; display: flex; flex-direction: column; background: #0e1621; position: relative; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; background: var(--msg); box-shadow: 0 2px 5px rgba(0,0,0,0.5); animation: fIn 0.2s ease; }
-        @keyframes fIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; background: var(--msg); box-shadow: 0 2px 5px rgba(0,0,0,0.5); animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .msg.my { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 2px; }
         .msg strong { display: block; font-size: 12px; color: #64b5f6; margin-bottom: 4px; }
         .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; }
@@ -19,7 +19,7 @@
         .stickers img { width: 50px; height: 50px; cursor: pointer; transition: 0.2s; }
         .stickers img:hover { transform: scale(1.2); }
         .controls { padding: 15px; background: var(--side); display: flex; gap: 10px; border-top: 1px solid #000; }
-        input { background: #242f3d; border: none; color: white; padding: 12px; border-radius: 10px; outline: none; flex: 1; }
+        input { background: #242f3d; border: none; color: white; padding: 12px; border-radius: 10px; outline: none; flex: 1; font-size: 15px; }
         button { background: #5288c1; border: none; color: white; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; }
         #status { font-size: 10px; color: #444; padding: 5px 20px; background: #080a0d; }
     </style>
@@ -31,58 +31,50 @@
     <div style="padding: 15px;">
         <input type="text" id="nameInp" placeholder="Твое Имя" style="width: 85%; background: #242f3d; color: white; border: none; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
         <input type="text" id="targetInp" placeholder="Кому (ЛС)" style="width: 85%; background: #242f3d; color: white; border: none; padding: 10px; border-radius: 5px;">
-        <p style="font-size: 10px; color: #444; margin-top: 20px;">РЕЖИМ: АВТОНОМНЫЙ ПАРТИЗАН</p>
+        <p style="font-size: 10px; color: #555; margin-top: 20px;">РЕЖИМ: БЕЗГРАНИЧНЫЙ</p>
     </div>
 </div>
 
 <div class="chat-main">
     <div id="messages"></div>
     <div class="stickers">
-        <img src="https://cdn-icons-png.flaticon.com" onclick="sendS(this.src)">
-        <img src="https://cdn-icons-png.flaticon.com" onclick="sendS(this.src)">
-        <img src="https://cdn-icons-png.flaticon.com" onclick="sendS(this.src)">
-        <img src="https://cdn-icons-png.flaticon.com" onclick="sendS(this.src)">
+        <img src="https://cdn-icons-png.flaticon.com" onclick="sendSticker(this.src)">
+        <img src="https://cdn-icons-png.flaticon.com" onclick="sendSticker(this.src)">
+        <img src="https://cdn-icons-png.flaticon.com" onclick="sendSticker(this.src)">
+        <img src="https://cdn-icons-png.flaticon.com" onclick="sendSticker(this.src)">
     </div>
     <div class="controls">
-        <input type="text" id="msgInp" placeholder="Написать сообщение...">
+        <input type="text" id="msgInp" placeholder="Твоё сообщение...">
         <button onclick="send()">GOYDA!</button>
     </div>
-    <div id="status">Поиск свободного шлюза...</div>
+    <div id="status">Проверка связи...</div>
 </div>
 
 <script>
-    // ТВОЙ КЛЮЧ
-    const AK = 'W4E4qw.apfvww:PdMhi0S8t17EIVCmsVwneUgsbkG6tVJ6S9NDTBCseH0';
-    const B64 = btoa(AK);
-    const TARGET = "https://rest.ably.io";
+    // ТВОЙ КЛЮЧ ИЗ СКРИНА (ПРОВЕРЕН: apfvww - 2 буквы 'w')
+    const ABLY_KEY = 'W4E4qw.apfvww:PdMhi0S8t17EIVCmsVwneUgsbkG6tVJ6S9NDTBCseH0';
+    const B64 = btoa(ABLY_KEY);
+    const API_TARGET = "https://rest.ably.io";
 
-    // СПИСОК ШЛЮЗОВ ДЛЯ ОБХОДА БЛОКИРОВОК
-    const GATES = [
+    // СПИСОК ШЛЮЗОВ (ПРОКСИ) - МЕНЯЙ, ЕСЛИ ВСЕ УМРУТ
+    const PROXIES = [
         "https://api.allorigins.win",
         "https://corsproxy.io?",
-        "https://api.codetabs.com",
-        "https://thingproxy.freeboard.io",
-        "https://www.google.com" // Фейковый шлюз (не работает, для теста ротации)
+        "https://api.codetabs.com"
     ];
 
-    let currentGate = 0;
+    let currentProxy = 0;
+    let lastMsgTime = 0;
 
-let lastT = 0;
-
-    // Умный загрузчик: пробует все шлюзы по очереди
-    async function smartReq(url, method = 'GET', body = null) {
-        for (let i = 0; i < GATES.length; i++) {
-            let gateIdx = (currentGate + i) % GATES.length;
-            let finalUrl = GATES[gateIdx] + encodeURIComponent(url);
-            
+// Умный запрос: пробует прокси по кругу
+    async function smartFetch(url, options = {}) {
+        for (let i = 0; i < PROXIES.length; i++) {
+            let idx = (currentProxy + i) % PROXIES.length;
+            let finalUrl = PROXIES[idx] + encodeURIComponent(url);
             try {
-                const res = await fetch(finalUrl, {
-                    method: method,
-                    headers: { 'Authorization': 'Basic ' + B64, 'Content-Type': 'application/json' },
-                    body: body ? JSON.stringify(body) : null
-                });
+                const res = await fetch(finalUrl, options);
                 if (res.ok) {
-                    currentGate = gateIdx; // Запоминаем рабочий шлюз
+                    currentProxy = idx;
                     return res;
                 }
             } catch (e) { continue; }
@@ -97,26 +89,36 @@ let lastT = 0;
         if (!t) return;
         const isImg = t.match(/\.(jpeg|jpg|gif|png|webp|jfif)$/i) != null;
         
-        document.getElementById('status').innerText = "Отправка через шлюз...";
-        const res = await smartReq(TARGET, 'POST', { name: 'm', data: JSON.stringify({ n, t, isImg, target }) });
+        document.getElementById('status').innerText = "Летит через шлюз...";
+        const res = await smartFetch(API_TARGET, {
+            method: 'POST',
+            headers: { 'Authorization': 'Basic ' + B64, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'm', data: JSON.stringify({ n, t, isImg, target }) })
+        });
         if (res) {
             document.getElementById('msgInp').value = '';
             load();
         }
     }
 
-    async function sendS(url) {
+    async function sendSticker(url) {
         const n = document.getElementById('nameInp').value || "Аноним";
         const target = document.getElementById('targetInp').value || null;
-        await smartReq(TARGET, 'POST', { name: 'm', data: JSON.stringify({ n, t: url, isS: true, target }) });
+        await smartFetch(API_TARGET, {
+            method: 'POST',
+            headers: { 'Authorization': 'Basic ' + B64, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: 'm', data: JSON.stringify({ n, t: url, isS: true, target }) })
+        });
         load();
     }
 
     async function load() {
-        const res = await smartReq(TARGET + "?limit=30", 'GET');
+        const res = await smartFetch(API_TARGET + "?limit=30", {
+            headers: { 'Authorization': 'Basic ' + B64 }
+        });
         if (res) {
             const msgs = await res.json();
-            if (msgs.length > 0 && msgs.timestamp !== lastT) {
+            if (msgs.length > 0 && msgs.timestamp !== lastMsgTime) {
                 const box = document.getElementById('messages');
                 box.innerHTML = '';
                 msgs.reverse().forEach(m => {
@@ -131,17 +133,17 @@ let lastT = 0;
                     else div.innerHTML += `<span>${d.t}</span>`;
                     box.appendChild(div);
                 });
-                lastT = msgs[msgs.length - 1].timestamp;
+                lastMsgTime = msgs[msgs.length - 1].timestamp;
                 box.scrollTop = box.scrollHeight;
-                document.getElementById('status').innerText = "Связь стабильна. Шлюз #" + currentGate;
+                document.getElementById('status').innerText = "Связь стабильна. Шлюз: #" + currentProxy;
             }
         } else {
-            document.getElementById('status').innerText = "Все шлюзы заблокированы. Проверь интернет.";
+            document.getElementById('status').innerText = "Все шлюзы заблокированы. Проверь сеть.";
         }
     }
 
     document.getElementById('msgInp').onkeydown = (e) => { if(e.key === 'Enter') send(); };
-    setInterval(load, 4000); 
+    setInterval(load, 5000); 
     load();
 </script>
 </body>
