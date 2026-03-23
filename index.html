@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Goyda X: Unstoppable</title>
+    <style>
+        :root { --bg: #0e1621; --side: #17212b; --accent: #2b5278; --msg: #182533; --text: #ffffff; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 260px; background: var(--side); border-right: 1px solid #000; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar-header { padding: 20px; font-weight: bold; font-size: 22px; color: #64b5f6; border-bottom: 1px solid #080a0d; text-shadow: 0 0 10px #2b5278; }
+        .chat-main { flex: 1; display: flex; flex-direction: column; background: #0e1621; position: relative; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; background: var(--msg); box-shadow: 0 2px 5px rgba(0,0,0,0.5); animation: fIn 0.2s ease; }
+        @keyframes fIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .msg.my { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 2px; }
+        .msg strong { display: block; font-size: 12px; color: #64b5f6; margin-bottom: 4px; }
+        .msg img { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; }
+        .stickers { display: flex; gap: 10px; padding: 10px; background: #080a0d; overflow-x: auto; border-top: 1px solid #17212b; }
+        .stickers img { width: 50px; height: 50px; cursor: pointer; transition: 0.2s; }
+        .stickers img:hover { transform: scale(1.2); }
+        .controls { padding: 15px; background: var(--side); display: flex; gap: 10px; border-top: 1px solid #000; }
+        input { background: #242f3d; border: none; color: white; padding: 12px; border-radius: 10px; outline: none; flex: 1; }
+        button { background: #5288c1; border: none; color: white; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        #status { font-size: 10px; color: #444; padding: 5px 20px; background: #080a0d; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header">Goyda X</div>
+    <div style="padding: 15px;">
+        <input type="text" id="nameInp" placeholder="Твое Имя" style="width: 85%; background: #242f3d; color: white; border: none; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
+        <input type="text" id="targetInp" placeholder="Кому (ЛС)" style="width: 85%; background: #242f3d; color: white; border: none; padding: 10px; border-radius: 5px;">
+        <p style="font-size: 10px; color: #444; margin-top: 20px;">РЕЖИМ: АВТОНОМНЫЙ ПАРТИЗАН</p>
+    </div>
+</div>
+
+<div class="chat-main">
+    <div id="messages"></div>
+    <div class="stickers">
+        <img src="https://cdn-icons-png.flaticon.com" onclick="sendS(this.src)">
+        <img src="https://cdn-icons-png.flaticon.com" onclick="sendS(this.src)">
+        <img src="https://cdn-icons-png.flaticon.com" onclick="sendS(this.src)">
+        <img src="https://cdn-icons-png.flaticon.com" onclick="sendS(this.src)">
+    </div>
+    <div class="controls">
+        <input type="text" id="msgInp" placeholder="Написать сообщение...">
+        <button onclick="send()">GOYDA!</button>
+    </div>
+    <div id="status">Поиск свободного шлюза...</div>
+</div>
+
+<script>
+    // ТВОЙ КЛЮЧ
+    const AK = 'W4E4qw.apfvww:PdMhi0S8t17EIVCmsVwneUgsbkG6tVJ6S9NDTBCseH0';
+    const B64 = btoa(AK);
+    const TARGET = "https://rest.ably.io";
+
+    // СПИСОК ШЛЮЗОВ ДЛЯ ОБХОДА БЛОКИРОВОК
+    const GATES = [
+        "https://api.allorigins.win",
+        "https://corsproxy.io?",
+        "https://api.codetabs.com",
+        "https://thingproxy.freeboard.io",
+        "https://www.google.com" // Фейковый шлюз (не работает, для теста ротации)
+    ];
+
+    let currentGate = 0;
+
+let lastT = 0;
+
+    // Умный загрузчик: пробует все шлюзы по очереди
+    async function smartReq(url, method = 'GET', body = null) {
+        for (let i = 0; i < GATES.length; i++) {
+            let gateIdx = (currentGate + i) % GATES.length;
+            let finalUrl = GATES[gateIdx] + encodeURIComponent(url);
+            
+            try {
+                const res = await fetch(finalUrl, {
+                    method: method,
+                    headers: { 'Authorization': 'Basic ' + B64, 'Content-Type': 'application/json' },
+                    body: body ? JSON.stringify(body) : null
+                });
+                if (res.ok) {
+                    currentGate = gateIdx; // Запоминаем рабочий шлюз
+                    return res;
+                }
+            } catch (e) { continue; }
+        }
+        return null;
+    }
+
+    async function send() {
+        const n = document.getElementById('nameInp').value || "Аноним";
+        const t = document.getElementById('msgInp').value;
+        const target = document.getElementById('targetInp').value || null;
+        if (!t) return;
+        const isImg = t.match(/\.(jpeg|jpg|gif|png|webp|jfif)$/i) != null;
+        
+        document.getElementById('status').innerText = "Отправка через шлюз...";
+        const res = await smartReq(TARGET, 'POST', { name: 'm', data: JSON.stringify({ n, t, isImg, target }) });
+        if (res) {
+            document.getElementById('msgInp').value = '';
+            load();
+        }
+    }
+
+    async function sendS(url) {
+        const n = document.getElementById('nameInp').value || "Аноним";
+        const target = document.getElementById('targetInp').value || null;
+        await smartReq(TARGET, 'POST', { name: 'm', data: JSON.stringify({ n, t: url, isS: true, target }) });
+        load();
+    }
+
+    async function load() {
+        const res = await smartReq(TARGET + "?limit=30", 'GET');
+        if (res) {
+            const msgs = await res.json();
+            if (msgs.length > 0 && msgs.timestamp !== lastT) {
+                const box = document.getElementById('messages');
+                box.innerHTML = '';
+                msgs.reverse().forEach(m => {
+                    const d = JSON.parse(m.data);
+                    const myN = document.getElementById('nameInp').value;
+                    if (d.target && d.target !== myN && d.n !== myN) return;
+
+                    const div = document.createElement('div');
+                    div.className = `msg ${d.n === myN ? 'my' : ''}`;
+                    div.innerHTML = `<strong>${d.n}${d.target ? ' 🔒 ЛС' : ''}</strong>`;
+                    if (d.isImg || d.isS) div.innerHTML += `<img src="${d.t}">`;
+                    else div.innerHTML += `<span>${d.t}</span>`;
+                    box.appendChild(div);
+                });
+                lastT = msgs[msgs.length - 1].timestamp;
+                box.scrollTop = box.scrollHeight;
+                document.getElementById('status').innerText = "Связь стабильна. Шлюз #" + currentGate;
+            }
+        } else {
+            document.getElementById('status').innerText = "Все шлюзы заблокированы. Проверь интернет.";
+        }
+    }
+
+    document.getElementById('msgInp').onkeydown = (e) => { if(e.key === 'Enter') send(); };
+    setInterval(load, 4000); 
+    load();
+</script>
+</body>
+</html>
